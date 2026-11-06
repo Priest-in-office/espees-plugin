@@ -19,11 +19,11 @@ Reference code is in **Node.js / Express / PostgreSQL**. The rules are written s
 In Claude Code:
 
 ```
-/plugin marketplace add <github-user>/<repo-name>
+/plugin marketplace add Priest-in-office/espees-plugin
 /plugin install espees-payments@espees-tools
 ```
 
-Replace `<github-user>/<repo-name>` with this repository's address.
+The first command adds this repository as a marketplace; the second installs the skill from it. To update later, run `/plugin marketplace update espees-tools`.
 
 ## Contents
 
