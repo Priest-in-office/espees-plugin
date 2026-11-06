@@ -8,7 +8,7 @@
       "name": "espees-payments",
       "source": "./",
       "description": "Build, review and debug Espees (ESP) merchant payment integrations: confirm correctly, grant exactly once, never lose a late or wrongly answered payment.",
-      "version": "1.0.0"
+      "version": "1.0.1"
     }
   ],
   "metadata": {

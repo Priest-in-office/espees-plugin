@@ -103,9 +103,10 @@ exports.recordCheck = async (id, { status, details, raw, changed }) => {
     [id, status, details, JSON.stringify(raw ?? null)]);
 };
 
-// The account's latest unpaid order from the last few minutes.
+// The account's latest still-pending order from the last few minutes (a declined one is a clear
+// "not paid": no warning, they just try again).
 exports.findRecentUnpaid = (userId, minutes = 15) => one(
-  `SELECT * FROM espees_orders WHERE user_id=$1 AND status IN ('pending','declined') AND payment_ref IS NOT NULL
+  `SELECT * FROM espees_orders WHERE user_id=$1 AND status = 'pending' AND payment_ref IS NOT NULL
      AND created_at > now() - make_interval(mins => $2) ORDER BY created_at DESC LIMIT 1`, [userId, minutes]);
 
 // Approve + grant, once. Period starts when the account's current paid access ends, so payments stack.
@@ -156,7 +157,7 @@ async function startCheckout(user, planId, { confirmAgain = false } = {}) {
   if (earlier) {
     const s = await settle(earlier.id);
     if (s?.status === 'approved') return { orderId: s.id, alreadyPaid: true };
-    if (!confirmAgain) throw new PaymentError(
+    if (s?.status === 'pending' && !confirmAgain) throw new PaymentError(
       "We haven't confirmed your earlier payment yet. If you already paid, wait a minute before paying again.", 409);
   }
   const order = await repo.createOrder({ userId: user.id, plan: planId, days: plan.days, priceEsp: plan.priceEsp });
@@ -255,7 +256,7 @@ Replace `axios.post` before loading the app. The fake answers `/product` with `r
 - `DECLINED` then `APPROVED` on the same ref approves; `NOT FOUND` for a day expires, a later `APPROVED` is approved by the hourly late pass; past 7 days nobody asks;
 - `?result=success` alone grants nothing; the confirm URL ends in `/confirm/` (assert it);
 - Espees down at checkout leaves no order and gives 502; paused gives 503 while started orders still settle;
-- Buy again within minutes: earlier order approved → `alreadyPaid`; unconfirmed → 409 unless `confirmAgain`; an old pay link is never returned;
+- Buy again within minutes: earlier order approved → `alreadyPaid`; still pending → 409 unless `confirmAgain`; declined (wrong PIN) → no warning, a new order; an old pay link is never returned;
 - each change in Espees' answer adds one `espees_checks` row, the same answer twice adds none;
 - the reconciler starts in process 0 only.
 
