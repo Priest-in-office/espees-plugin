@@ -1,7 +1,10 @@
 {
   "name": "espees-payments",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Build, review and debug Espees (ESP) merchant payment integrations: confirm correctly, grant exactly once, never lose a late or wrongly answered payment.",
+  "author": {
+    "name": "espees-payments contributors"
+  },
   "license": "MIT",
   "keywords": [
     "espees",

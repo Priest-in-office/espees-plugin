@@ -1,6 +1,6 @@
 # Reference implementation: Node, Express, PostgreSQL
 
-Sells fixed periods of access ("30 days"). Adapt names and the grant; keep the shape. Deps: `express`, `pg`, `axios`. Server-only config: `ESPEES_API_KEY`, `ESPEES_MERCHANT_WALLET`, `PUBLIC_URL`, optional `ESPEES_CHECKOUT_PAUSED`.
+Sells fixed periods of access ("30 days"). Adapt names and the grant; keep the shape. Deps: `express`, `pg`, `axios`. The Espees developer token and merchant wallet are server-only: your app hands them to `configure()` once at startup, from your own secrets store or configuration (never the client, never the repo). Also `PUBLIC_URL` and an optional `ESPEES_CHECKOUT_PAUSED` switch.
 
 ## 1. Schema
 
@@ -51,20 +51,24 @@ Access = a row with `ends_at > now()`. Remember `ENABLE ROW LEVEL SECURITY` if y
 ```js
 const axios = require('axios');
 const API = 'https://api.espees.org/v2/payment';
+let cfg = null;                                  // { apiKey, merchantWallet }, set once by your app
+exports.configure = ({ apiKey, merchantWallet }) => {
+  if (!apiKey || !merchantWallet) throw new Error('Espees needs an apiKey and a merchantWallet');
+  cfg = { apiKey, merchantWallet };
+};
 const call = (path, body) => {
-  const key = process.env.ESPEES_API_KEY;
-  if (!key || !process.env.ESPEES_MERCHANT_WALLET) throw new Error('Espees is not configured');
-  return axios.post(`${API}${path}`, body, { headers: { 'x-api-key': key }, timeout: 20000 }).then((r) => r.data);
+  if (!cfg) throw new Error('Espees is not configured: call configure() at startup');
+  return axios.post(`${API}${path}`, body, { headers: { 'x-api-key': cfg.apiKey }, timeout: 20000 }).then((r) => r.data);
 };
 exports.createProduct = async (p) => {   // → payment_ref
   const data = await call('/product', {
     product_sku: p.sku, narration: p.narration, price: p.price,
-    merchant_wallet: process.env.ESPEES_MERCHANT_WALLET,
+    merchant_wallet: cfg?.merchantWallet,
     success_url: p.successUrl, fail_url: p.failUrl, user_data: p.userData });
   if (!data?.payment_ref) throw new Error('Espees returned no payment_ref');
   return data.payment_ref;
 };
-exports.confirmPayment = (ref) => call('/confirm/', { payment_ref: ref });   // keep the slash
+exports.confirmPayment = async (ref) => call('/confirm/', { payment_ref: ref });   // keep the slash
 exports.paymentUrl = (ref) => `https://payment.espees.org/pay/${encodeURIComponent(ref)}`;
 ```
 
@@ -239,7 +243,8 @@ pages.get('/espees/return/:id', async (req, res) => {                 // mount p
   // render by o?.status: approved "Payment received"; pending "Waiting for Espees. Don't pay this link
   // again." (auto-refresh); declined "Didn't go through"; expired "Couldn't confirm. If you paid, contact support."
 });
-// server.js: app.use('/api/billing', api); app.use('/billing', pages);
+// server.js: espees.configure({ apiKey, merchantWallet });   // values from your secrets store / own config
+//            app.use('/api/billing', api); app.use('/billing', pages);
 //            const stop = startReconciler(); process.on('SIGTERM', () => { stop(); server.close(); });
 ```
 

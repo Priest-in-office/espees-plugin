@@ -48,6 +48,10 @@ The reference code was run against a real PostgreSQL database with a simulated E
 
 This is an independent project. It is not affiliated with or endorsed by Espees, Loveworld or KingsChat.
 
+## What this plugin does and does not do
+
+It contains only documentation and sample code (Markdown files and one icon). It has no hooks, scripts, commands or MCP servers, it runs nothing on your machine, and it never reads, stores or sends your credentials. The sample code shows how **your own app** should handle its Espees developer token: your app passes the token and merchant wallet to the client once at startup, from your own secrets store or configuration. The plugin itself never sees them.
+
 ## Corrections
 
 Found behaviour that differs from what is written here, or that Espees has since changed? Please open an issue on this repository.
